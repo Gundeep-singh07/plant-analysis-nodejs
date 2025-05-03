@@ -1,18 +1,22 @@
-# Use Node.js base image
-FROM node:18
+FROM node:18-alpine
 
-# Set the working directory
 WORKDIR /app
 
-# Copy package.json and install dependencies
+# Copy package files and install dependencies
 COPY package*.json ./
 RUN npm install
 
-# Copy the rest of the app
+# Copy the rest of the application code
 COPY . .
 
-# Expose the port
+# Create reports directory
+RUN mkdir -p reports
+
+# Create upload directory
+RUN mkdir -p upload
+
+# Expose the port your app runs on
 EXPOSE 3004
 
-# Start the app
+# Start the application
 CMD ["node", "app.js"]

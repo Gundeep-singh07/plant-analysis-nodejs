@@ -1,4 +1,7 @@
 node_modules
+npm-debug.log
+reports/*.pdf
+upload/*
+.git
 .env
-upload
-reports
+.DS_Store
