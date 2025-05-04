@@ -23,7 +23,7 @@
       "secrets": [
         {
           "name": "GEMINI_API_KEY",
-          "valueFrom": "arn:aws:ssm:<region>:<your-account-id>:parameter/plant-analysis/gemini-api-key"
+          "valueFrom": "arn:aws:ssm:us-east-1:845055290314:parameter/plant-analysis/gemini-api-key"
         }
       ],
       "logConfiguration": {
