@@ -10,6 +10,7 @@ env:
   ECS_SERVICE: plant-analysis-task-service-hrdduqrb
   ECS_CLUSTER: plant-analysis-cluster
   CONTAINER_NAME: plant-analysis-container
+  LOG_GROUP: /ecs/plant-analysis-task-service-hrdduqrb
 
 jobs:
   deploy:
@@ -34,7 +35,18 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      # Step 4: Build, tag, and push Docker image to Amazon ECR
+      # Step 4: Ensure CloudWatch log group exists
+      - name: Ensure CloudWatch log group exists
+        run: |
+          LOG_GROUP_EXISTS=$(aws logs describe-log-groups --log-group-name-prefix ${{ env.LOG_GROUP }} --query 'logGroups[0].logGroupName' --output text || echo "NOT_FOUND")
+          if [ "$LOG_GROUP_EXISTS" = "NOT_FOUND" ]; then
+            echo "Creating log group ${{ env.LOG_GROUP }}"
+            aws logs create-log-group --log-group-name ${{ env.LOG_GROUP }}
+          else
+            echo "Log group ${{ env.LOG_GROUP }} already exists"
+          fi
+
+      # Step 5: Build, tag, and push Docker image to Amazon ECR
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
         env:
@@ -45,7 +57,7 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      # Step 5: Register new ECS task definition
+      # Step 6: Register new ECS task definition
       - name: Register new ECS task definition
         id: register-task-def
         env:
@@ -64,7 +76,7 @@ jobs:
 
           echo "TASK_DEF_ARN=$TASK_DEF_ARN" >> $GITHUB_ENV
 
-      # Step 6: Deploy updated ECS service with the new task definition
+      # Step 7: Deploy updated ECS service with the new task definition
       - name: Deploy updated ECS service
         run: |
           aws ecs update-service \
@@ -72,3 +84,12 @@ jobs:
             --service ${{ env.ECS_SERVICE }} \
             --task-definition ${{ env.TASK_DEF_ARN }} \
             --force-new-deployment
+
+      # Step 8: Wait for deployment stability
+      - name: Wait for deployment stability
+        run: |
+          echo "Waiting for service deployment to complete..."
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_SERVICE }}
+          echo "Deployment completed successfully"

@@ -29,7 +29,7 @@
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
-          "awslogs-group": "/ecs/plant-analysis",
+          "awslogs-group": "/ecs/plant-analysis-task-service-hrdduqrb",
           "awslogs-region": "<region>",
           "awslogs-stream-prefix": "ecs"
         }
