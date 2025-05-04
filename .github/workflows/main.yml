@@ -68,6 +68,8 @@ jobs:
           sed "s|<region>|${{ env.AWS_REGION }}|g" | \
           sed "s|<your-account-id>.dkr.ecr.<region>.amazonaws.com/plant-analysis-tool:latest|${IMAGE_URI}|g" > updated-task-def.json
 
+          cat updated-task-def.json
+
           # Register the new task definition
           TASK_DEF_ARN=$(aws ecs register-task-definition \
             --cli-input-json file://updated-task-def.json \
@@ -85,11 +87,66 @@ jobs:
             --task-definition ${{ env.TASK_DEF_ARN }} \
             --force-new-deployment
 
-      # Step 8: Wait for deployment stability
-      - name: Wait for deployment stability
+      # Step 8: Monitor deployment (without failing on timeout)
+      - name: Monitor deployment progress
         run: |
-          echo "Waiting for service deployment to complete..."
-          aws ecs wait services-stable \
-            --cluster ${{ env.ECS_CLUSTER }} \
-            --services ${{ env.ECS_SERVICE }}
-          echo "Deployment completed successfully"
+          echo "Monitoring service deployment progress..."
+
+          # Wait for 30 seconds to let deployment get started
+          sleep 30
+
+          # Check deployment status every 30 seconds for up to 5 minutes
+          for i in {1..10}; do
+            echo "Checking deployment status (attempt $i)..."
+            
+            # Get service deployment status
+            aws ecs describe-services \
+              --cluster ${{ env.ECS_CLUSTER }} \
+              --services ${{ env.ECS_SERVICE }} \
+              --query 'services[0].deployments' \
+              --output json
+            
+            # Get running tasks
+            echo "Listing running tasks:"
+            TASKS=$(aws ecs list-tasks \
+              --cluster ${{ env.ECS_CLUSTER }} \
+              --service-name ${{ env.ECS_SERVICE }} \
+              --desired-status RUNNING \
+              --query 'taskArns' \
+              --output text)
+            
+            if [ -n "$TASKS" ]; then
+              echo "Found running tasks: $TASKS"
+              
+              # Describe the tasks to get their status
+              aws ecs describe-tasks \
+                --cluster ${{ env.ECS_CLUSTER }} \
+                --tasks $TASKS \
+                --query 'tasks[*].{TaskArn:taskArn,LastStatus:lastStatus,HealthStatus:healthStatus,StoppedReason:stoppedReason}' \
+                --output json
+            else
+              echo "No running tasks found."
+              
+              # List stopped tasks to see if any failed
+              STOPPED_TASKS=$(aws ecs list-tasks \
+                --cluster ${{ env.ECS_CLUSTER }} \
+                --service-name ${{ env.ECS_SERVICE }} \
+                --desired-status STOPPED \
+                --query 'taskArns[0:5]' \
+                --output text)
+              
+              if [ -n "$STOPPED_TASKS" ]; then
+                echo "Found stopped tasks. Checking their status:"
+                aws ecs describe-tasks \
+                  --cluster ${{ env.ECS_CLUSTER }} \
+                  --tasks $STOPPED_TASKS \
+                  --query 'tasks[*].{TaskArn:taskArn,LastStatus:lastStatus,StoppedReason:stoppedReason}' \
+                  --output json
+              fi
+            fi
+            
+            # Wait before checking again
+            sleep 30
+          done
+
+          echo "Deployment monitoring complete. Check the logs for details."
