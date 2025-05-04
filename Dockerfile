@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM --platform=linux/amd64 node:18-alpine
 
 WORKDIR /app
 
@@ -9,11 +9,13 @@ RUN npm install
 # Copy the rest of the application code
 COPY . .
 
-# Create reports directory
+# Create reports and upload directories
 RUN mkdir -p reports
-
-# Create upload directory
 RUN mkdir -p upload
+
+# Add health check endpoint for ECS
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3004/health || exit 1
 
 # Expose the port your app runs on
 EXPOSE 3004
