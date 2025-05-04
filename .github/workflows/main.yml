@@ -7,7 +7,7 @@ on:
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: plant-analysis-tool
-  ECS_SERVICE: plant-analysis-service
+  ECS_SERVICE: plant-analysis-task-service-hrdduqrb
   ECS_CLUSTER: plant-analysis-cluster
   CONTAINER_NAME: plant-analysis-container
 
