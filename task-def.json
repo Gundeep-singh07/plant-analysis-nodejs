@@ -1,6 +1,6 @@
 {
   "family": "plant-analysis-task",
-  "executionRoleArn": "arn:aws:iam::<your-account-id>:role/ecsTaskExecutionRole",
+  "executionRoleArn": "arn:aws:iam::845055290314:role/ecsTaskExecutionRole",
   "networkMode": "awsvpc",
   "containerDefinitions": [
     {
